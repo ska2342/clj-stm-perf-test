@@ -1,0 +1,27 @@
+* Status
+
+This is just a quick hack.  I tried to come up with more sophisticated
+functions which would drive the STM machine into the various corners
+available.  However, those functions I could come up with, which would
+do this in a repeatable, reliable way, would all use (Thread/sleep x)
+which lead to the benchmarks depending mainly on those sleep times.
+
+* How to run
+
+Note, that the projects calls Clojure 1.2.1 as its dependency.
+Usually I will use a Clojure compiled from the sources and run it very
+basic REPL with 
+
+ java -cp path/to/my/compiled/clojure.jar clojure.main
+
+Then I ususally paste the functions from this project and look how
+they perform.  Only the development of the functions is done with
+swank and slime.
+
+* License
+
+Copyright (C) 2011 Stefan Kamphausen
+
+Distributed under the Eclipse Public License, the same as Clojure.
+See file COPYING.
+
