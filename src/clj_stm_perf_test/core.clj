@@ -68,7 +68,7 @@
                (throw (RuntimeException.
                        (str "Assertion failed "
                             [v1 v2 v3 v4 sz]))))))]
-    (average-time 20 rapid)))    
+    (average-time 20 rapid)))
 
 (defn run-reader-vs-writer []
   (letfn [(rvsw
@@ -102,20 +102,8 @@
              (doseq [a agts]
                (await a))
              [@r1 @r2 @r3]))]
-      (average-time 30 rvsw)))
-    
+    (average-time 30 rvsw)))
 
-
-(comment
-  :reader-vs-writer
-  (/ 381.39986096 298.06458444)
-  :rapid-fire
-  (/ 6227.3828961 5835.9593978)
-  :website
-  (/ 4878.0352188 3970.7327914))
-        
-                 
-        
 (defn run-all []
   (let [start (System/nanoTime)]
     (println "stm example from website")
@@ -129,8 +117,3 @@
      "All runs took" (/ (- (System/nanoTime) start) 1000000.0)
      "msecs")))
   
-
-  ;; (println "collision counter")
-  ;; (run-collision-counter)
-  ;; (println "history stresstest")
-  ;; (run-history-stresstest))
