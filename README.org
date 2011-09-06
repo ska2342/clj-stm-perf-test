@@ -32,10 +32,10 @@ To load the complete benchmark suite you can issue
 * Further Reading
 
 Everyone loves to cite Mark Volkmans still valid article at
-http://java.ociweb.com/mark/stm/article.html however, I think we
+[[http://java.ociweb.com/mark/stm/article.html]] however, I think we
 should add a recent Master's Thesis by Peder R. L. Nielsen and Patrick
 T. Kristiansen to the list of important resources for details on
-Clojure's STM: http://vbn.aau.dk/files/32587755/report.pdf
+Clojure's STM: [[http://vbn.aau.dk/files/32587755/report.pdf]]
 
 These guys did an awesome job.
 
