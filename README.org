@@ -9,14 +9,35 @@ which lead to the benchmarks depending mainly on those sleep times.
 * How to run
 
 Note, that the projects calls Clojure 1.2.1 as its dependency.
-Usually I will use a Clojure compiled from the sources and run it very
+Usually I will use a Clojure compiled from the sources and run its very
 basic REPL with 
 
- java -cp path/to/my/compiled/clojure.jar clojure.main
+#+BEGIN_SRC bash
+ java -cp path/to/my/compiled/clojure.jar:. clojure.main
+#+END_SRC
+
+from the top of this project.
 
 Then I ususally paste the functions from this project and look how
 they perform.  Only the development of the functions is done with
 swank and slime.
+
+To load the complete benchmark suite you can issue
+
+#+BEGIN_SRC clojure
+ (load-file "src/clj_stm_perf_test/core.clj")
+#+END_SRC
+
+
+* Further Reading
+
+Everyone loves to cite Mark Volkmans still valid article at
+http://java.ociweb.com/mark/stm/article.html however, I think we
+should add a recent Master's Thesis by Peder R. L. Nielsen and Patrick
+T. Kristiansen to the list of important resources for details on
+Clojure's STM: http://vbn.aau.dk/files/32587755/report.pdf
+
+These guys did an awesome job.
 
 * License
 
