@@ -14,7 +14,10 @@
                (range n)))
              (* n 1000000)))))
 
-(defn run-stm-example-from-website []
+(defn run-stm-example-from-website
+  "Run the example from http://clojure.org/refs without any validation.
+Could probably improve concurrency by using a random generator per thread."
+  []
   (letfn [(run
            [nvecs nitems nthreads niters]
            (let [vec-refs (vec (map (comp ref vec)
@@ -32,7 +35,11 @@
              (count (distinct (apply concat (map deref vec-refs))))))]
     (average-time 15 #(run 100 10 10 10000))))
 
-(defn run-rapid-fire []
+(defn run-rapid-fire
+  "Use the same function on 4 Refs which swaps the values of two Refs (reading
+them first) and increments and decrements the other two.  Processing is done on
+some agents.  Validation occurs after all agents have finished."
+  []
   (letfn [(impl
            []
            (let [size 50000
@@ -52,8 +59,7 @@
              (dorun
               (map #(send % af)
                    (take size (cycle agts))))
-             (doseq [a agts]
-               (await a))
+             (apply await agts)
              [@r1 @r2 @r3 @r4 size]))
           (rapid
            []
@@ -70,7 +76,13 @@
                             [v1 v2 v3 v4 sz]))))))]
     (average-time 20 rapid)))
 
-(defn run-reader-vs-writer []
+(defn run-reader-vs-writer
+  "Create writers and readers for 3 refs with a ratio of 2:1 and process them on
+some agents. Readers validate current state of the refs. Writers just ref-set
+new integers.
+
+Could probably improve concurrency by using a random generator per thread."
+  []
   (letfn [(rvsw
            []
            (let [n  50000
@@ -99,10 +111,115 @@
               (map #(send %2 (if (= 0 (mod %1 3)) readr writr))
                    (take n (range))
                    (take n (cycle agts))))
-             (doseq [a agts]
-               (await a))
+             (apply await agts)
              [@r1 @r2 @r3]))]
     (average-time 30 rvsw)))
+
+(defn run-shared-int
+  "This was inspired by the example in the Master's Thesis cited in the README
+  of this project."
+  []
+  (letfn [(shared-int
+           []
+           (let [r (ref 0)
+                 max 100000
+                 agt-fn (fn [incs]
+                          (dotimes [_ incs]
+                            (dosync
+                             (alter r inc))))
+                 n-agts 4
+                 agts (for [_ (range n-agts)]
+                        (agent (/ max n-agts)))]
+             (doseq [a agts]
+               (send a agt-fn))
+             (apply await agts)
+             (if-not (= max (deref r))
+               (throw (RuntimeException. "Shared int failed")))))]
+    (average-time 15 shared-int)))
+
+
+(defn run-stock-exchange
+  "Stupid stock trade simulation with a market of symbols with a random number
+of shares each.  Persons will be simulated by agents, each of which performs a
+given number of trading transactions, buying a share from the market or giving
+it back.  The coolest thing of this stock exchange is, that the people need no
+money to trade.
+
+Could probably improve concurrency by using a random generator per thread."
+  []
+  (letfn
+      [(stock-exchange
+        [n-pers n-trades]
+        (let [n-shares 100              ; maximum number of shares per symbol
+              n-syms   9                ; number of symbols in the market
+              syms (vec (map #(format "%04d" %) (range n-syms)))
+              ;; the market is just a ref on a map with symbols as keys and the number
+              ;; of available shares as values
+              market (ref
+                      (into {} (map
+                                (fn [sym] {sym (rand-int n-shares)})
+                                syms)))
+              ;; for validation: sum has to be constant
+              mark-sum (reduce + (vals (deref market)))
+              ;; these are the trading people, each with an unused :id and a
+              ;; :portfolio of shares
+              persons (ref (vec (map
+                                 (fn [i] {:portfolio {} :id i})
+                                 (range n-pers))))
+              ;; agents to act as persons
+              agts (vec (map #(agent %) (range n-pers)))
+
+              ;; pick a symbol from the market, plus num available
+              select-from-market #(let [sym (rand-nth syms)
+                                        in-market (get @market sym)]
+                                    [sym in-market])
+
+              ;; pick a symbol from a person's :portfolio and the number of those
+              ;; shares in the :portfolio        
+              select-from-person #(let [portfolio (:portfolio %)
+                                        sym (rand-nth (keys portfolio))
+                                        in-portfolio (get portfolio sym)]
+                                    [sym in-portfolio])
+
+              ;; buy from market to person
+              buy (fn [pers-id]
+                    (dosync
+                     (let [pers (nth @persons pers-id)
+                           [sym in-market] (select-from-market)]
+                       ;;(println "Buy: " pers sym in-market)
+                       (when (< 0 in-market)
+                         (alter market #(update-in % [sym] dec))
+                         (alter
+                          persons
+                          (fn [ps]
+                            (if-not (get-in ps [pers-id :portfolio sym])
+                              (assoc-in ps
+                                        [pers-id :portfolio sym]
+                                        1)
+                              (update-in ps
+                                         [pers-id :portfolio sym]
+                                         inc)))))))
+                    pers-id)
+              ;; sell from person to market
+              sell (fn [pers-id]
+                     (dosync
+                      (let [pers (nth @persons pers-id)
+                            [sym in-portf] (select-from-person pers)]
+                        ;;(println "Sell: " pers sym in-portf)
+                        (when (and (not (nil? sym))
+                                   (not (nil? in-portf))     
+                                   (< 0 in-portf))
+                          (alter market #(update-in % [sym] inc))
+                          (alter persons
+                                 #(update-in % [pers-id :portfolio sym] dec)))))
+                     pers-id)
+              ]
+          (doseq [a agts]
+            (dotimes [i n-trades]
+              (send a (if (= 2 (mod i 3)) sell buy))))
+          (apply await agts)
+          ))]
+    (average-time 10 #(stock-exchange 100 500))))
 
 (defn run-all []
   (let [start (System/nanoTime)]
@@ -112,7 +229,10 @@
     (run-rapid-fire)
     (println "reader vs writer")
     (run-reader-vs-writer)
-
+    (println "shared int")
+    (run-shared-int)
+    (println "stock exchange")
+    (run-stock-exchange)
     (println
      "All runs took" (/ (- (System/nanoTime) start) 1000000.0)
      "msecs")))
