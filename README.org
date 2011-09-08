@@ -28,6 +28,12 @@ To load the complete benchmark suite you can issue
  (load-file "src/clj_stm_perf_test/core.clj")
 #+END_SRC
 
+* Oh my god, it's full of constants
+
+Yes, there is actually *lots* of seemingly magic numbers in there.
+All these were chosen so that the benchmark runs well on the machines
+that i have access to.  Most importantly there were no visible
+improvements from HotSpot to spot anymore.
 
 * Further Reading
 

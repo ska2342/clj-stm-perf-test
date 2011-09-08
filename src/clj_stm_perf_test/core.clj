@@ -74,7 +74,7 @@ some agents.  Validation occurs after all agents have finished."
                (throw (RuntimeException.
                        (str "Assertion failed "
                             [v1 v2 v3 v4 sz]))))))]
-    (average-time 20 rapid)))
+    (average-time 15 rapid)))
 
 (defn run-reader-vs-writer
   "Create writers and readers for 3 refs with a ratio of 2:1 and process them on
@@ -113,31 +113,34 @@ Could probably improve concurrency by using a random generator per thread."
                    (take n (cycle agts))))
              (apply await agts)
              [@r1 @r2 @r3]))]
-    (average-time 30 rvsw)))
+    (average-time 15 rvsw)))
 
 (defn run-shared-int
   "This was inspired by the example in the Master's Thesis cited in the README
-  of this project."
+  of this project.  Validates result after agents finished."
   []
   (letfn [(shared-int
            []
-           (let [r (ref 0)
-                 max 100000
+           (let [r      (ref 0)
+                 maxv   100000 ; must be divisable by n-agts for validation
                  agt-fn (fn [incs]
                           (dotimes [_ incs]
-                            (dosync
-                             (alter r inc))))
+                            (dosync (alter r inc))))
                  n-agts 4
-                 agts (for [_ (range n-agts)]
-                        (agent (/ max n-agts)))]
+                 agts   (for [_ (range n-agts)]
+                          (agent (int (/ maxv n-agts))))]
              (doseq [a agts]
                (send a agt-fn))
              (apply await agts)
-             (if-not (= max (deref r))
+             (if-not (= maxv (deref r))
                (throw (RuntimeException. "Shared int failed")))))]
-    (average-time 15 shared-int)))
+    (average-time 10 shared-int)))
 
 
+;; yes one would usually break this down into several functions.  It's just, I
+;; want this file to contain only run-* functions which contains everything
+;; necessary.  That's easier to paste to POCR (Plain Old Clojure REPL) which is
+;; my main method of running these benchmarks
 (defn run-stock-exchange
   "Stupid stock trade simulation with a market of symbols with a random number
 of shares each.  Persons will be simulated by agents, each of which performs a
@@ -153,8 +156,8 @@ Could probably improve concurrency by using a random generator per thread."
         (let [n-shares 100              ; maximum number of shares per symbol
               n-syms   9                ; number of symbols in the market
               syms (vec (map #(format "%04d" %) (range n-syms)))
-              ;; the market is just a ref on a map with symbols as keys and the number
-              ;; of available shares as values
+              ;; the market is just a ref on a map with symbols as keys and the
+              ;; number of available shares as values
               market (ref
                       (into {} (map
                                 (fn [sym] {sym (rand-int n-shares)})
@@ -174,8 +177,8 @@ Could probably improve concurrency by using a random generator per thread."
                                         in-market (get @market sym)]
                                     [sym in-market])
 
-              ;; pick a symbol from a person's :portfolio and the number of those
-              ;; shares in the :portfolio        
+              ;; pick a symbol from a person's :portfolio and the number of
+              ;; those shares in the :portfolio
               select-from-person #(let [portfolio (:portfolio %)
                                         sym (rand-nth (keys portfolio))
                                         in-portfolio (get portfolio sym)]
@@ -211,14 +214,15 @@ Could probably improve concurrency by using a random generator per thread."
                                    (< 0 in-portf))
                           (alter market #(update-in % [sym] inc))
                           (alter persons
-                                 #(update-in % [pers-id :portfolio sym] dec)))))
-                     pers-id)
-              ]
+                                 #(update-in %
+                                             [pers-id :portfolio sym]
+                                             dec)))))
+                     pers-id)] ; end let
           (doseq [a agts]
             (dotimes [i n-trades]
               (send a (if (= 2 (mod i 3)) sell buy))))
           (apply await agts)
-          ))]
+          ))] ; end letfn
     (average-time 10 #(stock-exchange 100 500))))
 
 (defn run-all []
