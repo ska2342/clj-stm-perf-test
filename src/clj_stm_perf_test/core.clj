@@ -1,7 +1,7 @@
 (ns clj-stm-perf-test.core)
 
 (defn average-time [n f]
-  (println "Average time after " n "repetions:"
+  (println "Average time after " n "repetitions:"
            (double
             (/
              (reduce
@@ -33,7 +33,7 @@ Could probably improve concurrency by using a random generator per thread."
                  ]
              (dorun (apply pcalls (repeat nthreads #(dotimes [_ niters] (swap)))))
              (count (distinct (apply concat (map deref vec-refs))))))]
-    (average-time 15 #(run 100 10 10 10000))))
+    (average-time 25 #(run 100 10 10 10000))))
 
 (defn run-rapid-fire
   "Use the same function on 4 Refs which swaps the values of two Refs (reading
@@ -74,7 +74,7 @@ some agents.  Validation occurs after all agents have finished."
                (throw (RuntimeException.
                        (str "Assertion failed "
                             [v1 v2 v3 v4 sz]))))))]
-    (average-time 15 rapid)))
+    (average-time 25 rapid)))
 
 (defn run-reader-vs-writer
   "Create writers and readers for 3 refs with a ratio of 2:1 and process them on
@@ -113,7 +113,7 @@ Could probably improve concurrency by using a random generator per thread."
                    (take n (cycle agts))))
              (apply await agts)
              [@r1 @r2 @r3]))]
-    (average-time 15 rvsw)))
+    (average-time 25 rvsw)))
 
 (defn run-shared-int
   "This was inspired by the example in the Master's Thesis cited in the README
@@ -134,7 +134,7 @@ Could probably improve concurrency by using a random generator per thread."
              (apply await agts)
              (if-not (= maxv (deref r))
                (throw (RuntimeException. "Shared int failed")))))]
-    (average-time 10 shared-int)))
+    (average-time 20 shared-int)))
 
 
 ;; yes one would usually break this down into several functions.  It's just, I
@@ -223,7 +223,7 @@ Could probably improve concurrency by using a random generator per thread."
               (send a (if (= 2 (mod i 3)) sell buy))))
           (apply await agts)
           ))] ; end letfn
-    (average-time 10 #(stock-exchange 100 500))))
+    (average-time 20 #(stock-exchange 100 500))))
 
 (defn run-all []
   (let [start (System/nanoTime)]
