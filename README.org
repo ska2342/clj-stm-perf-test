@@ -16,7 +16,15 @@ basic REPL with
  java -cp path/to/my/compiled/clojure.jar:. clojure.main
 #+END_SRC
 
-from the top of this project.
+from the top of this project.  If you want to use a parallel garbage
+collector, you may want to try
+
+#+BEGIN_SRC bash
+ java -cp path/to/my/compiled/clojure.jar:. -XX:+UseParallelGC clojure.main
+#+END_SRC
+
+However, on my machines a parallel GC gave only about 2% speedup.
+
 
 Then I ususally paste the functions from this project and look how
 they perform.  Only the development of the functions is done with
@@ -25,7 +33,13 @@ swank and slime.
 To load the complete benchmark suite you can issue
 
 #+BEGIN_SRC clojure
- (load-file "src/clj_stm_perf_test/core.clj")
+(load-file "src/clj_stm_perf_test/core.clj")
+#+END_SRC
+
+If you want to run (almost) all function, use
+
+#+BEGIN_SRC clojure
+(clj-stm-perf-test.core/run-all)
 #+END_SRC
 
 * Oh my god, it's full of constants
