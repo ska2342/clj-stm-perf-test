@@ -225,6 +225,78 @@ Could probably improve concurrency by using a random generator per thread."
           ))] ; end letfn
     (average-time 20 #(stock-exchange 100 500))))
 
+
+(defn run-logist-outer
+  "Run a parallel computation of the logistic map with calculation of values
+*outside* of the transaction.
+
+Average runtime of this seems to be dominated by GC.  Don't add it to the
+run-all function below.
+
+Example adapted from http://www.clojure.buch.de. "
+  []
+  (let [main-data (ref [])
+        
+        logist-iter
+        (fn [mu nskip ntake]
+          (let [logist #(* mu % (- 1.0 %))]
+            (loop [x    0.5
+                   step 0
+                   acc  []]
+              (if (> step (+ nskip ntake))
+                acc
+                (if (< step nskip)
+                  (recur (logist x) (inc step) acc)
+                  (recur (logist x) (inc step)
+                         (conj acc x)))))))
+        
+        calc
+        (fn []
+          (dorun
+           (pmap
+            (fn [mu]
+              (let [xs (logist-iter mu 5000 100)
+                    points (vec (map (fn [x] [mu x]) xs))]
+                (dosync
+                 (alter main-data into points))))
+            (range 2.90 4 0.001))))]
+    (average-time 20 calc)))
+
+(defn run-logist-inner []
+  "Run a parallel computation of the logistic map with calculation of values
+*inside* of the transaction.
+
+Average runtime of this seems to be dominated by GC.  Don't add it to the
+run-all function below.
+
+Example adapted from http://www.clojure.buch.de. "
+  (let [main-data (ref [])
+        
+        logist-iter
+        (fn [mu nskip ntake]
+          (let [logist #(* mu % (- 1.0 %))]
+            (loop [x    0.5
+                   step 0
+                   acc  []]
+              (if (> step (+ nskip ntake))
+                acc
+                (if (< step nskip)
+                  (recur (logist x) (inc step) acc)
+                  (recur (logist x) (inc step)
+                         (conj acc x)))))))
+        
+        calc
+        (fn []
+          (dorun
+           (pmap
+            (fn [mu]
+              (dosync
+               (let [xs (logist-iter mu 5000 100)
+                     points (vec (map (fn [x] [mu x]) xs))]
+                 (alter main-data into points))))
+            (range 2.90 4 0.001))))]
+    (average-time 20 calc)))
+
 (defn run-all []
   (let [start (System/nanoTime)]
     (println "stm example from website")
@@ -237,6 +309,10 @@ Could probably improve concurrency by using a random generator per thread."
     (run-shared-int)
     (println "stock exchange")
     (run-stock-exchange)
+    ;; (println "logistic map (calculation outside)")
+    ;; (run-logist-outer)
+    ;; (println "logistic map (calculation inside)")
+    ;; (run-logist-inner)
     (println
      "All runs took" (/ (- (System/nanoTime) start) 1000000.0)
      "msecs")))
